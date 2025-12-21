@@ -60,16 +60,22 @@ npm run dev
 
 ### API Endpoints:
 GET    /api/           - Получить все задачи
+
 POST   /api/           - Создать новую задачу
+
 PUT    /api/{id}       - Обновить задачу
+
 DELETE /api/{id}       - Удалить задачу
+
 GET    /               - Статус API
+
 GET    /health         - Health check
+
 GET    /docs           - Swagger документация
 
 ## Архитектурные решения
 
-1. База данных: SQLite + aiosqlite
+1. **База данных: SQLite + aiosqlite**
 
 Почему:
 
@@ -80,7 +86,7 @@ GET    /docs           - Swagger документация
 
 Альтернатива: Изначально использовался Tortoise ORM, но из-за проблем совместимости версий был заменен на прямую работу с aiosqlite.
 
-2. Backend: FastAPI
+2. **Backend: FastAPI**
 
 Почему:
 
@@ -96,7 +102,7 @@ Async/await для всех операций с БД
 CORS middleware для работы с frontend
 Health checks для мониторинга
 
-3. Frontend: Vue.js 3 + Composition API
+3. **Frontend: Vue.js 3 + Composition API**
 
 Почему:
 
@@ -112,7 +118,7 @@ Reactive state через ref() и reactive()
 Async/await для API запросов
 Error handling для всех операций
 
-4. Docker & Docker Compose
+4. **Docker & Docker Compose**
 
 Почему:
 
@@ -121,7 +127,7 @@ Error handling для всех операций
 Простое развертывание
 Масштабируемость
 
-5. API Design: RESTful
+5. **API Design: RESTful**
 
 Принципы:
 
@@ -130,15 +136,15 @@ Error handling для всех операций
 JSON для всех запросов/ответов
 Валидация на уровне Pydantic схем
 
-6. Error Handling
+6. **Error Handling**
 
-Backend:
+**Backend:**
 
 HTTPException для пользовательских ошибок
 Автоматическая валидация через Pydantic
 Try-catch блоки для работы с БД
 
-Frontend:
+**Frontend:**
 
 Try-catch для всех fetch запросов
 Console.error для отладки
