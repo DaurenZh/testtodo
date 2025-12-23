@@ -3,75 +3,68 @@ from api.schemas.todo import TodoCreate, TodoUpdate, TodoResponse
 from api.database import get_db
 from typing import List
 
-todo_router = APIRouter(prefix="/api", tags=["todo"])
+todo_router = APIRouter(tags=["todo"])
 
 @todo_router.get("/", response_model=List[TodoResponse])
 async def get_todos():
-    db = await get_db()
+    conn = await get_db()
     try:
-        async with db.execute("SELECT * FROM todos") as data:
-            rows = await data.fetchall()
-            return [dict(row) for row in rows]
+        rows = await conn.fetch("SELECT * FROM todos ORDER BY id")
+        return [dict(row) for row in rows]
     finally:
-        await db.close()
+        await conn.close()
 
 @todo_router.post("/", response_model=TodoResponse)
 async def create_todo(todo: TodoCreate):
-    db = await get_db()
+    conn = await get_db()
     try:
-        cursor = await db.execute(
-            "INSERT INTO todos (task, done) VALUES (?, ?)",
-            (todo.task, todo.done)
+        row = await conn.fetchrow(
+            "INSERT INTO todos (task, done) VALUES ($1, $2) RETURNING *",
+            todo.task, todo.done
         )
-        await db.commit()
-        todo_id = data.lastrowid
-        
-        async with db.execute("SELECT * FROM todos WHERE id = ?", (todo_id,)) as data:
-            row = await data.fetchone()
-            return dict(row)
+        return dict(row)
     finally:
-        await db.close()
+        await conn.close()
 
 @todo_router.put("/{id}", response_model=TodoResponse)
 async def update_todo(id: int, todo: TodoUpdate):
-    db = await get_db()
+    conn = await get_db()
     try:
-
-        async with db.execute("SELECT * FROM todos WHERE id = ?", (id,)) as data:
-            existing = await data.fetchone()
-            if not existing:
-                raise HTTPException(status_code=404, detail="Todo not found")
+        existing = await conn.fetchrow("SELECT * FROM todos WHERE id = $1", id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Todo not found")
             
-        update_data = todo.dict(exclude_unset=True)
+        update_data = todo.model_dump(exclude_unset=True)
         if not update_data:
             return dict(existing)
         
-        set_clause = ", ".join([f"{key} = ?" for key in update_data.keys()])
-        values = list(update_data.values()) + [id]
+        # Строим UPDATE запрос
+        set_parts = []
+        values = []
+        param_count = 1
         
-        await db.execute(
-            f"UPDATE todos SET {set_clause} WHERE id = ?",
-            values
-        )
-        await db.commit()
+        for key, value in update_data.items():
+            set_parts.append(f"{key} = ${param_count}")
+            values.append(value)
+            param_count += 1
         
-        async with db.execute("SELECT * FROM todos WHERE id = ?", (id,)) as data:
-            row = await data.fetchone()
-            return dict(row)
+        values.append(id)
+        query = f"UPDATE todos SET {', '.join(set_parts)} WHERE id = ${param_count} RETURNING *"
+        
+        row = await conn.fetchrow(query, *values)
+        return dict(row)
     finally:
-        await db.close()
+        await conn.close()
 
 @todo_router.delete("/{id}")
 async def delete_todo(id: int):
-    db = await get_db()
+    conn = await get_db()
     try:
-        async with db.execute("SELECT * FROM todos WHERE id = ?", (id,)) as data:
-            existing = await data.fetchone()
-            if not existing:
-                raise HTTPException(status_code=404, detail="Todo not found")
+        existing = await conn.fetchrow("SELECT * FROM todos WHERE id = $1", id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Todo not found")
         
-        await db.execute("DELETE FROM todos WHERE id = ?", (id,))
-        await db.commit()
-        return {"Todo deleted successfully"}
+        await conn.execute("DELETE FROM todos WHERE id = $1", id)
+        return {"detail": "Todo deleted successfully"}
     finally:
-        await db.close()
+        await conn.close()

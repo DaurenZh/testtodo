@@ -1,16 +1,19 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001/api'
 const todos = ref([])
 const newTodoTitle = ref('')
+const filter = ref('all') // 'all', 'active', 'completed'
 
 async function fetchTodos() {
   try {
     const response = await fetch(`${API_URL}/`)
-    todos.value = await response.json()
+    const data = await response.json()
+    todos.value = Array.isArray(data) ? data : []
   } catch (error) {
     console.error('Error fetching todos:', error)
+    todos.value = []
   }
 }
 
@@ -23,6 +26,10 @@ async function addTodo() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task: newTodoTitle.value, done: false })
     })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
     
     const newTodo = await response.json()
     todos.value.push(newTodo)
@@ -60,6 +67,18 @@ async function deleteTodo(id) {
   }
 }
 
+const filteredTodos = computed(() => {
+  if (filter.value === 'active') {
+    return todos.value.filter(t => !t.done)
+  } else if (filter.value === 'completed') {
+    return todos.value.filter(t => t.done)
+  }
+  return todos.value
+})
+
+const activeCount = computed(() => todos.value.filter(t => !t.done).length)
+const completedCount = computed(() => todos.value.filter(t => t.done).length)
+
 onMounted(fetchTodos)
 </script>
 
@@ -77,12 +96,35 @@ onMounted(fetchTodos)
       <button @click="addTodo" class="add-btn">Добавить</button>
     </div>
 
-    <div v-if="todos.length === 0" class="empty-state">
-      <p>Нет задач. Добавьте первую!</p>
+    <div class="filters">
+      <button 
+        @click="filter = 'all'" 
+        :class="['filter-btn', { active: filter === 'all' }]"
+      >
+        Все ({{ todos.length }})
+      </button>
+      <button 
+        @click="filter = 'active'" 
+        :class="['filter-btn', { active: filter === 'active' }]"
+      >
+        Активные ({{ activeCount }})
+      </button>
+      <button 
+        @click="filter = 'completed'" 
+        :class="['filter-btn', { active: filter === 'completed' }]"
+      >
+        Завершённые ({{ completedCount }})
+      </button>
+    </div>
+
+    <div v-if="filteredTodos.length === 0" class="empty-state">
+      <p v-if="filter === 'all'">Нет задач. Добавьте первую!</p>
+      <p v-else-if="filter === 'active'">Нет активных задач! 🎉</p>
+      <p v-else>Нет завершённых задач</p>
     </div>
 
     <ul v-else class="todo-list">
-      <li v-for="todo in todos" :key="todo.id" class="todo-item">
+      <li v-for="todo in filteredTodos" :key="todo.id" class="todo-item">
         <input 
           type="checkbox" 
           :checked="todo.done"
@@ -142,8 +184,33 @@ h1 {
   transition: background 0.3s;
 }
 
-.add-btn:hover {
-  background: #45a049;
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.filter-btn {
+  padding: 10px 20px;
+  background: #f0f0f0;
+  color: #333;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.filter-btn:hover {
+  background: #e0e0e0;
+}
+
+.filter-btn.active {
+  background: #4CAF50;
+  color: white;
+  border-color: #45a049;
 }
 
 .empty-state {
@@ -192,16 +259,19 @@ h1 {
 }
 
 .delete-btn {
+  padding: 6px 12px;
   background: none;
+  color: #d00303;
   border: none;
-  font-size: 22px;
+  border-radius: 8px;
   cursor: pointer;
-  opacity: 0.5;
-  transition: opacity 0.3s, transform 0.2s;
+  font-size: 17px;
+  transition: all 0.3s;
+  opacity: 0.6;
 }
 
-.delete-btn:hover {
+/* .delete-btn:hover {
   opacity: 1;
   transform: scale(1.2);
-}
+} */
 </style>
