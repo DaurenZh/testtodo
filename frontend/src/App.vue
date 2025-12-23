@@ -119,7 +119,7 @@ onMounted(fetchTodos)
 
     <div v-if="filteredTodos.length === 0" class="empty-state">
       <p v-if="filter === 'all'">Нет задач. Добавьте первую!</p>
-      <p v-else-if="filter === 'active'">Нет активных задач! 🎉</p>
+      <p v-else-if="filter === 'active'">Нет активных задач!</p>
       <p v-else>Нет завершённых задач</p>
     </div>
 
